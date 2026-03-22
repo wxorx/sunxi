@@ -1,6 +1,6 @@
-# source this file to download toolchain tarball - 15.2 is used to build latest 
+# source this file to download toolchain tarball - 15.2 is used to build latest
 # u-boot and linux kernel 6.15
-# Link to download both: 
+# Download from:
 # https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads
 # Direct link below
 
