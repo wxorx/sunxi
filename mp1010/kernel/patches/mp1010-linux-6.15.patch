@@ -1,0 +1,40 @@
+diff --git a/drivers/gpu/drm/sun4i/sun4i_tcon.c b/drivers/gpu/drm/sun4i/sun4i_tcon.c
+index 960e83c82..287797ad2 100644
+--- a/drivers/gpu/drm/sun4i/sun4i_tcon.c
++++ b/drivers/gpu/drm/sun4i/sun4i_tcon.c
+@@ -122,7 +122,6 @@ static void sun4i_tcon_setup_lvds_phy(struct sun4i_tcon *tcon,
+ 		     SUN4I_TCON0_LVDS_ANA0_CK_EN |
+ 		     SUN4I_TCON0_LVDS_ANA0_REG_V |
+ 		     SUN4I_TCON0_LVDS_ANA0_REG_C |
+-		     SUN4I_TCON0_LVDS_ANA0_EN_MB |
+ 		     SUN4I_TCON0_LVDS_ANA0_PD |
+ 		     SUN4I_TCON0_LVDS_ANA0_DCHS);
+ 
+@@ -1447,7 +1446,16 @@ static int sun8i_r40_tcon_tv_set_mux(struct sun4i_tcon *tcon,
+ 	return 0;
+ }
+ 
+-static const struct sun4i_tcon_quirks sun4i_a10_quirks = {
++static const struct sun4i_tcon_quirks sun4i_a10_tcon0_quirks = {
++	.supports_lvds		= true,
++	.has_channel_0		= true,
++	.has_channel_1		= true,
++	.dclk_min_div		= 4,
++	.set_mux			= sun4i_a10_tcon_set_mux,
++	.setup_lvds_phy		= sun4i_tcon_setup_lvds_phy,
++};
++
++static const struct sun4i_tcon_quirks sun4i_a10_tcon1_quirks = {
+ 	.has_channel_0		= true,
+ 	.has_channel_1		= true,
+ 	.dclk_min_div		= 4,
+@@ -1544,7 +1552,8 @@ static const struct sun4i_tcon_quirks sun20i_d1_lcd_quirks = {
+ 
+ /* sun4i_drv uses this list to check if a device node is a TCON */
+ const struct of_device_id sun4i_tcon_of_table[] = {
+-	{ .compatible = "allwinner,sun4i-a10-tcon", .data = &sun4i_a10_quirks },
++	{ .compatible = "allwinner,sun4i-a10-tcon0", .data = &sun4i_a10_tcon0_quirks },
++	{ .compatible = "allwinner,sun4i-a10-tcon1", .data = &sun4i_a10_tcon1_quirks },
+ 	{ .compatible = "allwinner,sun5i-a13-tcon", .data = &sun5i_a13_quirks },
+ 	{ .compatible = "allwinner,sun6i-a31-tcon", .data = &sun6i_a31_quirks },
+ 	{ .compatible = "allwinner,sun6i-a31s-tcon", .data = &sun6i_a31s_quirks },

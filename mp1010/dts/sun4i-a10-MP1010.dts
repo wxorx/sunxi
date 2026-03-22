@@ -1,0 +1,603 @@
+/*
+ * Copyright 2015 Hans de Goede <hdegoede@redhat.com>
+ *
+ * This file is dual-licensed: you can use it either under the terms
+ * of the GPL or the X11 license, at your option. Note that this dual
+ * licensing only applies to this file, and not this project as a
+ * whole.
+ *
+ *  a) This file is free software; you can redistribute it and/or
+ *     modify it under the terms of the GNU General Public License as
+ *     published by the Free Software Foundation; either version 2 of the
+ *     License, or (at your option) any later version.
+ *
+ *     This file is distributed in the hope that it will be useful,
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *     GNU General Public License for more details.
+ *
+ * Or, alternatively,
+ *
+ *  b) Permission is hereby granted, free of charge, to any person
+ *     obtaining a copy of this software and associated documentation
+ *     files (the "Software"), to deal in the Software without
+ *     restriction, including without limitation the rights to use,
+ *     copy, modify, merge, publish, distribute, sublicense, and/or
+ *     sell copies of the Software, and to permit persons to whom the
+ *     Software is furnished to do so, subject to the following
+ *     conditions:
+ *
+ *     The above copyright notice and this permission notice shall be
+ *     included in all copies or substantial portions of the Software.
+ *
+ *     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ *     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ *     OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ *     NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ *     HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ *     WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ *     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ *     OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+/dts-v1/;
+#include "sun4i-a10.dtsi"
+#include "sunxi-common-regulators.dtsi"
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/pwm/pwm.h>
+
+/* PA=0, PB=1, PC=2, PD=3, PE=4, PF=5, PG=6, PH=7, PI=8 */
+/ {
+	model = "Mpman MP1010";
+	compatible = "mpman,mp1010", "allwinner,sun4i-a10";
+
+	reg_axp_ipsout: regulator-axp-ipsout {
+        compatible = "regulator-fixed";
+        regulator-name = "axp-ipsout";
+        regulator-min-microvolt = <5000000>;
+        regulator-max-microvolt = <5000000>;
+        regulator-always-on;
+    };
+
+	reg_1v8: reg-1v8-supply {
+        compatible = "regulator-fixed";
+        regulator-name = "reg-1v8-supply";
+        regulator-min-microvolt = <1800000>;
+        regulator-max-microvolt = <1800000>;
+        gpio = <&pio 7 16 GPIO_ACTIVE_HIGH>; /* PH16 */
+        enable-active-high;
+		vin-supply = <&reg_axp_ipsout>;
+		regulator-boot-on;
+		regulator-always-on;
+        status = "okay";
+    };
+
+	reg_ts: reg-ts-supply {
+		compatible = "regulator-fixed";
+		regulator-name = "reg-ts-supply";
+        regulator-min-microvolt = <3300000>;
+        regulator-max-microvolt = <3300000>;
+        gpio = <&pio 8 16 GPIO_ACTIVE_LOW>; /* PI16 */
+        enable-active-low;
+		vin-supply = <&reg_vcc3v3>;
+		regulator-boot-on;
+		regulator-always-on;
+		status = "okay";
+	};
+
+	csi0: csi@1c09000 {
+		/*compatible = "allwinner,sun4i-a10-csi0";*/
+		compatible = "allwinner,sun7i-a20-csi0";
+		reg = <0x01c09000 0x1000>;
+		interrupts = <42>;
+		clocks = <&ccu CLK_AHB_CSI0>,
+		         <&ccu CLK_CSI_SCLK>,
+				 <&ccu CLK_DRAM_CSI0>;
+		clock-names = "bus", "isp", "ram";
+		resets = <&ccu RST_CSI0>;
+		power-supply = <&reg_1v8>;
+	};
+
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		pwms = <&pwm 0 10000 PWM_POLARITY_INVERTED>;  /* pwm_ch=0, freq=10000 Hz */
+		brightness-levels = <0 10 20 30 40 50 60 70 80 90 100>;
+		default-brightness-level = <8>;
+		enable-gpios = <&pio 7 7 GPIO_ACTIVE_HIGH>;  /* PH07 from lcd_bl_en */
+		power-supply = <&reg_vcc3v3>;
+		status = "okay";
+	};
+
+   panel_lvds: panel-lvds {
+        compatible = "panel-lvds";
+        power-supply = <&reg_vcc3v3>;
+		backlight = <&backlight>;
+		enable-gpios = <&pio 7 8 GPIO_ACTIVE_HIGH>;  /* PH08 */
+
+        width-mm = <223>;
+        height-mm = <125>;
+		label = "hsd101pfw5-b00";
+        data-mapping = "vesa-24";
+
+        panel-timing {
+				/* 1024x600 @60Hz */
+				clock-frequency = <52000000>;
+            	hactive = <1024>;
+            	vactive = <600>;
+            	hsync-len = <1>;
+            	hfront-porch = <287>;
+            	hback-porch = <33>;
+            	vfront-porch = <647>;
+            	vback-porch = <23>;
+            	vsync-len = <1>;
+			};
+
+		port {
+			lvds_in_tcon0: endpoint {
+				remote-endpoint = <&tcon0_out_lvds>;
+			};
+		};
+   	};
+
+	aliases {
+		serial0 = &uart0;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+
+	hdmi-connector {
+		compatible = "hdmi-connector";
+		type = "a";
+
+		port {
+			hdmi_con_in: endpoint {
+				remote-endpoint = <&hdmi_out_con>;
+			};
+		};
+	};
+};
+
+&pio {
+
+	vcc-pc-supply = <&reg_vcc3v3>;
+	vcc-pe-supply = <&reg_ldo3>;
+	vcc-pf-supply = <&reg_vcc3v3>;
+	vcc-pg-supply = <&reg_vcc3v3>;
+	vcc-ph-supply = <&reg_vcc3v3>;
+	vcc-pi-supply = <&reg_vcc3v3>;
+
+	lcd_lvds0_pins: lcd-lvds0-pins {
+		pins = 	"PD0","PD1","PD2","PD3","PD4","PD5","PD6","PD7","PD8","PD9";
+		function = "lvds0";
+	};
+
+	csi0_8bits_pins: csi-8bits-pins {
+		pins = "PE0","PE2","PE3","PE4","PE5","PE6","PE7","PE8","PE9","PE10","PE11";
+		function = "csi0";
+	};
+	
+	csi0_mclk_pin: csi-mclk-pin {
+		pins = "PE1";
+		function = "csi0";
+	};
+
+	nand_pins: nand-pins {
+		pins = "PC0","PC1","PC2","PC5","PC8","PC9","PC10","PC11","PC12","PC13","PC14","PC15";
+		function = "nand0";
+	};
+
+	nand_cs0_pin: nand-cs0-pin {
+		pins = "PC4";
+		function = "nand0";
+		bias-pull-up;
+	};
+
+	nand_cs1_pin: nand-cs1-pin {
+		pins = "PC3";
+		function = "nand0";
+		bias-pull-up;
+	};
+
+	nand_rb0_pin: nand-rb0-pin {
+		pins = "PC6";
+		function = "nand0";
+		bias-pull-up;
+	};
+
+	nand_rb1_pin: nand-rb1-pin {
+		pins = "PC7";
+		function = "nand0";
+		bias-pull-up;
+	};
+};
+
+&tcon0 {
+	compatible = "allwinner,sun4i-a10-tcon0";
+	resets = <&ccu RST_TCON0>, <&ccu RST_LVDS>;
+	reset-names = "lcd", "lvds";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&lcd_lvds0_pins>;
+    ports {
+
+		tcon0_out: port@1 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+			reg = <1>;
+
+            tcon0_out_lvds: endpoint@0 {
+                reg = <0>;
+                remote-endpoint = <&lvds_in_tcon0>;
+                allwinner,tcon-channel = <0>;
+				status = "okay";
+            };
+
+            tcon0_out_hdmi: endpoint@1 {
+                reg = <1>;
+                remote-endpoint = <&hdmi_in_tcon0>;
+                allwinner,tcon-channel = <1>;
+				status = "okay";
+            };
+        };
+    };
+};
+
+
+&tcon1 {
+	compatible = "allwinner,sun4i-a10-tcon1";
+	status = "okay";
+};
+
+&be1 {
+    status = "okay";
+};
+
+&fe1 {
+    status = "okay";
+};
+
+&be0 {
+    status = "okay";
+};
+
+&fe0 {
+    status = "okay";
+};
+
+&de {
+    status = "okay";
+};
+
+&hdmi {
+    status = "okay";
+};
+
+&hdmi_out {
+	hdmi_out_con: endpoint {
+		remote-endpoint = <&hdmi_con_in>;
+	};
+};
+
+&codec {
+	allwinner,pa-gpios = <&pio 7 15 GPIO_ACTIVE_HIGH>; /* PH15 */
+	allwinner,audio-routing =
+		"Headphone", "HP",
+		"Headphone", "HPCOM",
+		"Speaker", "HP",
+		"MIC1", "Mic",
+		"MIC2", "Headset Mic",
+		"Mic",  "MBIAS",
+		"Headset Mic", "HBIAS";
+
+	status = "okay";
+};
+
+&cpu0 {
+	cpu-supply = <&reg_dcdc2>;
+};
+
+&ehci0  {
+	status = "okay";
+};
+
+&ehci1 {
+	status = "okay";
+};
+
+&csi0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&csi0_8bits_pins>;
+	status = "okay";
+
+	port {
+		csi0_ep: endpoint {
+			remote-endpoint = <&gc0308_ep>;
+		};
+	};
+};
+
+&nfc {
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&nand_pins &nand_cs0_pin &nand_rb0_pin>;
+	status = "disabled";
+    nand@0 {
+        #address-cells = <1>;
+        #size-cells = <1>;
+        reg = <0>;
+        allwinner,rb = <0>;
+        
+        /* Use hardware ECC engine */
+        nand-ecc-mode = "hw";
+        
+        /* Explicitly set ECC strength and step size */
+        nand-ecc-strength = <64>;
+        nand-ecc-step-size = <1024>;
+
+        /* Consider adding this for better bad block management */
+        nand-on-flash-bbt;
+
+        partition@0 {
+            label = "bootloader";
+            reg = <0x0000000 0x1000000>;   /* 0MB - 16MB */
+        };
+        
+        partition@1 {
+            label = "env";
+            reg = <0x1000000 0x1000000>;   /* 16MB - 32MB */
+        };
+        
+        partition@2 {
+            label = "boot";
+            reg = <0x2000000 0x2000000>;   /* 32MB - 64MB */
+        };
+        
+        partition@3 {
+            label = "system";
+            reg = <0x4000000 0x20000000>;  /* 64MB - 576MB */
+        };
+        
+        partition@4 {
+            label = "data";
+            reg = <0x24000000 0x4b000000>; /* 576MB - 1776MB */
+        };
+        
+        partition@5 {
+            label = "misc";
+            reg = <0x6f000000 0x1000000>;  /* 1776MB - 1792MB */
+        };
+        
+        partition@6 {
+            label = "recovery";
+            reg = <0x70000000 0x2000000>;  /* 1792MB - 1824MB */
+        };
+        
+        partition@7 {
+            label = "cache";
+            reg = <0x72000000 0x14000000>; /* 1824MB - 2144MB */
+        };
+        
+        partition@8 {
+            label = "databk";
+            reg = <0x86000000 0x10000000>; /* 2144MB - 2400MB */
+        };
+        
+        partition@9 {
+            label = "UDISK";
+            reg = <0x96000000 0x56800000>; /* 2400MB - 3784MB */
+        };
+    };
+};
+
+&i2c0 {
+	status = "okay";
+
+	axp209: pmic@34 {
+		reg = <0x34>;
+		interrupts = <0>;
+
+		battery_power_supply: battery-power {
+			compatible = "x-powers,axp209-battery-power-supply";
+		};
+	};
+};
+
+#include "axp209.dtsi"
+
+&i2c1 {
+	status = "okay";
+
+/*
+	csi0-1v8-en 	- PH16
+	csi0-stby-en	- PH18
+	csi0-reset#		- PH13
+
+	csi1-1v8-en 	- PH17
+	csi1-stby-en	- PH19
+	csi1-reset#		- PH14
+*/
+
+	/* camera */
+	gc0308: camera@21 {
+		compatible = "galaxycore,gc0308";
+		reg = <0x21>;
+
+		clocks = <&ccu CLK_CSI0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&csi0_mclk_pin>; /* PE1 CSI0-MCLK */
+
+		powerdown-gpios = <&pio 7 18 GPIO_ACTIVE_HIGH>; /* PH18 */
+		reset-gpios = <&pio 7 13 GPIO_ACTIVE_LOW>; /* PH13 */
+
+		vdd28-supply = <&reg_ldo3>;
+		status = "okay";
+
+		port {
+			gc0308_ep: endpoint {
+				remote-endpoint = <&csi0_ep>;
+				bus-width = <8>;
+				hsync-active = <0>; /* Active low */
+				vsync-active = <0>; /* Active low */
+				data-active = <1>;  /* Active high */
+				pclk-sample = <1>;  /* Rising */
+			};
+		};
+	};
+
+	/* Accelerometer */
+    bma250@19 {
+        compatible = "bosch,bma250e";
+        reg = <0x19>;
+        interrupt-parent = <&pio>;
+        interrupts = <7 0 IRQ_TYPE_EDGE_FALLING>,  /* PH00 / EINT0 */
+                     <8 10 IRQ_TYPE_EDGE_FALLING>; /* PI10 */
+		interrupt-names = "int1", "int2";
+		vddio-supply = <&reg_vcc3v3>;
+		vdd-supply = <&reg_vcc3v3>;
+		status = "okay";
+    };
+};
+
+&i2c2 {
+	status = "okay";
+	ft5x: touchscreen@38 {
+		compatible = "edt,edt-ft5406";
+		reg = <0x38>;
+		interrupt-parent = <&pio>;
+		interrupts = <7 21 IRQ_TYPE_EDGE_FALLING>;
+		/*reset-gpios = <&pio 8 16 GPIO_ACTIVE_HIGH>;*/ /* PI16 */
+		wake-gpios = <&pio 1 13 GPIO_ACTIVE_HIGH>; /* PB13 */
+		touchscreen-size-x = <600>;
+		touchscreen-size-y = <1024>;
+		touchscreen-swapped-x-y;
+
+		/*vcc-supply = <&reg_vcc3v3>;*/
+		vcc-supply = <&reg_ts>;
+		iovcc-supply = <&reg_vcc3v3>;
+		status = "okay";
+ 	};
+};
+
+&lradc {
+	vref-supply = <&reg_ldo2>;
+	status = "okay";
+
+	button-200 {
+		label = "Volume Up";
+		linux,code = <KEY_VOLUMEUP>;
+		channel = <0>;
+		voltage = <200000>;
+	};
+
+	button-1000 {
+		label = "Volume Down";
+		linux,code = <KEY_VOLUMEDOWN>;
+		channel = <0>;
+		voltage = <1000000>;
+	};
+
+	button-1200 {
+		label = "Home";
+		linux,code = <KEY_HOMEPAGE>;
+		channel = <0>;
+		voltage = <1200000>;
+	};
+};
+
+&mmc0 {
+	vmmc-supply = <&reg_vcc3v3>;
+	bus-width = <4>;
+	cd-gpios = <&pio 7 1 GPIO_ACTIVE_LOW>; /* PH1 */
+	status = "okay";
+};
+
+&ohci0  {
+	status = "okay";
+};
+
+&otg_sram {
+	status = "okay";
+};
+
+&pwm {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pwm0_pin>;
+	status = "okay";
+};
+
+&reg_dcdc2 {
+	regulator-always-on;
+	regulator-min-microvolt = <1000000>;
+	regulator-max-microvolt = <1400000>;
+	regulator-name = "vdd-cpu";
+};
+
+&reg_dcdc3 {
+	regulator-always-on;
+	regulator-min-microvolt = <1250000>;
+	regulator-max-microvolt = <1250000>;
+	regulator-name = "vdd-int-dll";
+};
+
+&reg_ldo1 {
+	regulator-name = "vdd-rtc";
+};
+
+&reg_ldo2 {
+	regulator-always-on;
+	regulator-min-microvolt = <3000000>;
+	regulator-max-microvolt = <3000000>;
+	regulator-name = "avcc";
+};
+
+&reg_ldo3 {
+	regulator-min-microvolt = <2800000>;
+	regulator-max-microvolt = <2800000>;
+	regulator-name = "ldo3";
+	regulator-soft-start;
+	regulator-ramp-delay = <1600>;
+
+	regulator-boot-on;
+	regulator-always-on;
+
+};
+
+&reg_1v8 {
+	status = "okay";
+};
+
+&reg_usb0_vbus {
+	status = "okay";
+};
+
+&reg_usb1_vbus {
+	status = "okay";
+};
+
+&reg_usb2_vbus {
+	status = "okay";
+};
+
+&uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart0_pb_pins>;
+	status = "okay";
+};
+
+&usb_otg {
+	dr_mode = "otg";
+	status = "okay";
+};
+
+&usbphy {
+	usb0_id_det-gpios = <&pio 7 4 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>; /* PH4 */
+	usb0_vbus_det-gpios = <&pio 7 5 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>; /* PH5 */
+	usb0_vbus-supply = <&reg_usb0_vbus>;
+	usb1_vbus-supply = <&reg_usb1_vbus>;
+	usb2_vbus-supply = <&reg_usb2_vbus>;
+	status = "okay";
+};

@@ -1,0 +1,30 @@
+# Copy or link to u-boot/configs/MP1010_defconfig
+
+UBOOT_VER=v2026.04-rc2
+UBOOT_GIT=git://git.denx.de/u-boot.git
+
+if [ ! -d u-boot ]; then
+	git clone $UBOOT_GIT u-boot && \
+	(cd u-boot && git checkout tags/$UBOOT_VER && cd ..)
+fi
+
+cd ../../toolchain
+. README.1st u-boot
+cd -
+
+echo "ARCH = $ARCH"
+echo "TOOLCHAIN = $TOOLCHAIN"
+echo "CROSS_COMPILE = $CROSS_COMPILE"
+
+cp MP1010_defconfig u-boot/configs
+cp ../dts/sun4i-a10-MP1010.dts u-boot/dts/upstream/src/arm/allwinner
+
+cd u-boot
+git status
+make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE clean && \
+make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE MP1010_defconfig && \
+make V=1 ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE && \
+cp u-boot-sunxi-with-spl.bin .. && \
+cp dts/upstream/src/arm/allwinner/sun4i-a10-MP1010.dtb ..
+cd -
+echo "Done"

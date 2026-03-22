@@ -1,0 +1,59 @@
+# Source this file to prepare linux kernel
+#
+VER=6.15
+LINUX="linux-$VER"
+
+if [ ! -d $LINUX ]; then
+	git clone --depth 1 --branch v$VER https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git $LINUX
+fi
+
+if [ ! -d sunxi-mali ]; then
+	git clone https://github.com/wxorx/sunxi-mali.git
+fi
+
+cd ../../toolchain
+. README.1st linux
+cd -
+
+KERNEL_BUILD_DIR=$(pwd)/$LINUX
+KDIR=$KERNEL_BUILD_DIR
+INSTALL_MOD_PATH=$(pwd)/build
+INSTALL_HDR_PATH=$(pwd)/build/usr
+MALIVER=r6p2
+
+echo "VER = $VER"
+echo "LINUX = $LINUX"
+echo "ARCH = $ARCH"
+echo "TOOLCHAIN = $TOOLCHAIN"
+echo "CROSS_COMPILE = $CROSS_COMPILE"
+echo "LINUX = $LINUX"
+echo "KERNEL_BUILD_DIR = $KERNEL_BUILD_DIR"
+echo "INSTALL_MOD_PATH = $INSTALL_MOD_PATH"
+echo "INSTALL_HDR_PATH = $INSTALL_HDR_PATH"
+echo "MALIVER = $MALIVER"
+echo "KDIR = $KDIR"
+echo "PWD = $(pwd)"
+echo "Changing to $KDIR"
+
+rm -rf build
+rm -f kernel.txz
+mkdir -p build build/usr build/boot
+
+cd $KDIR
+make distclean && echo "Copying ../config/config-$VER to .config .." && cp ../config/config-$VER .config
+
+echo -n "Applying patch.. "
+git apply -q ../patches/mp1010-linux-$VER.patch && echo "OK" || { git apply -q -R --check ../patches/mp1010-linux-$VER.patch && echo "already applied"; }
+
+time make -j$(nproc) ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE zImage && \
+cp arch/arm/boot/zImage ../build/boot && \
+make -j$(nproc)  ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE modules && \
+make modules_install INSTALL_MOD_PATH=$INSTALL_MOD_PATH && \
+make headers_install INSTALL_HDR_PATH=$INSTALL_HDR_PATH
+
+cd ../sunxi-mali && KDIR=$KDIR ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE ./build.sh -r $MALIVER -c
+KDIR=$KDIR ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE ./build.sh -r $MALIVER -b && \
+KDIR=$KDIR ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE INSTALL_MOD_PATH=$INSTALL_MOD_PATH ./build.sh -r $MALIVER -i
+cd ../build && tar cJvf ../kernel.txz . && cd ..
+
+echo "Done"
