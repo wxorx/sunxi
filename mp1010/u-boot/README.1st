@@ -9,7 +9,7 @@ if [ ! -d u-boot ]; then
 fi
 
 cd ../../toolchain
-. README.1st u-boot
+. README.1st
 cd -
 
 echo "ARCH = $ARCH"

@@ -1,36 +1,17 @@
-# source this file to download toolchain tarballs - 15.2 is used to build latest 
-# u-boot; 11.2 is used to build linux kernel 6.15
+# source this file to download toolchain tarball - 15.2 is used to build latest 
+# u-boot and linux kernel 6.15
 # Link to download both: 
 # https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads
-# Direct links below
+# Direct link below
 
+if [ ! -f arm-gnu-toolchain-15.2.rel1-x86_64-arm-none-linux-gnueabihf.tar.xz ]; then
+	wget https://developer.arm.com/-/media/Files/downloads/gnu/15.2.rel1/binrel/arm-gnu-toolchain-15.2.rel1-x86_64-arm-none-linux-gnueabihf.tar.xz
+fi
+if [ ! -d arm-gnu-toolchain-15.2.rel1-x86_64-arm-none-linux-gnueabihf ]; then
+	echo "Extracting 15.2.rel1 arm-none-linux-gnueabihf toolchain.."
+	tar xJf arm-gnu-toolchain-15.2.rel1-x86_64-arm-none-linux-gnueabihf.tar.xz
+fi
 
-
-case "$1" in
-	"linux")
-		if [ ! -f gcc-arm-11.2-2022.02-x86_64-arm-none-linux-gnueabihf.tar.xz ]; then
-			wget https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu/11.2-2022.02/binrel/gcc-arm-11.2-2022.02-x86_64-arm-none-linux-gnueabihf.tar.xz
-		fi
-		if [ ! -d gcc-arm-11.2-2022.02-x86_64-arm-none-linux-gnueabihf ]; then
-			echo "Extracting 11.2-2022.02 arm-none-linux-gnueabihf toolchain.."
-			tar xJf gcc-arm-11.2-2022.02-x86_64-arm-none-linux-gnueabihf.tar.xz
-		fi
-
-		TOOLCHAIN=$(pwd)/gcc-arm-11.2-2022.02-x86_64-arm-none-linux-gnueabihf/bin
-		;;
-
-	"u-boot")
-		if [ ! -f arm-gnu-toolchain-15.2.rel1-x86_64-arm-none-linux-gnueabihf.tar.xz ]; then
-			wget https://developer.arm.com/-/media/Files/downloads/gnu/15.2.rel1/binrel/arm-gnu-toolchain-15.2.rel1-x86_64-arm-none-linux-gnueabihf.tar.xz
-		fi
-		if [ ! -d arm-gnu-toolchain-15.2.rel1-x86_64-arm-none-linux-gnueabihf ]; then
-			echo "Extracting 15.2.rel1 arm-none-linux-gnueabihf toolchain.."
-			tar xJf arm-gnu-toolchain-15.2.rel1-x86_64-arm-none-linux-gnueabihf.tar.xz
-		fi
-
-		TOOLCHAIN=$(pwd)/arm-gnu-toolchain-15.2.rel1-x86_64-arm-none-linux-gnueabihf/bin
-		;;
-esac
-
+TOOLCHAIN=$(pwd)/arm-gnu-toolchain-15.2.rel1-x86_64-arm-none-linux-gnueabihf/bin
 ARCH=arm
 CROSS_COMPILE=$TOOLCHAIN/arm-none-linux-gnueabihf-
